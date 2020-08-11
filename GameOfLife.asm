@@ -27,7 +27,8 @@ exit:  ; exit with code 0
   syscall
 
 
-draw_field:
+update_field:
+  push rax
   push r8
   push r9
   mov r8, field
@@ -41,6 +42,17 @@ draw_field:
     mov rsi, deadcell
     .out:
     call print
+
+    call get_neighbors
+    cmp rax, 2
+    jl .die
+    cmp rax, 3
+    jg .die
+
+    jmp .e
+    .die:
+
+    .e:
 
     inc r8
     inc r9
@@ -57,6 +69,7 @@ draw_field:
 
   pop r9
   pop r8
+  pop rax
   ret
 
 print:
@@ -80,6 +93,7 @@ print:
     pop rdi
     pop rax
     ret
+
 
 get_neighbors:
   nop
