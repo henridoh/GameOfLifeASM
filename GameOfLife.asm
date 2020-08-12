@@ -11,8 +11,11 @@ section .rodata
   msg db "Hello World", 10, 0
 
 section .data
+  times width db 0
   field1 times width*height db 0
+  times width db 0
   field2 times width*height db 0
+  times width db 0
   current dq field1
   next dq field2
   state db 0
@@ -22,8 +25,6 @@ section .text
 
 
 _start:
-  call update_field
-  call update_field
   call update_field
   call update_field
 
@@ -39,8 +40,9 @@ update_field:
   push r9
   push r10
   mov r8, [current]   ; current field
-  mov r9, 0
+  mov r9, 0           ; current x
   mov r10, [next]     ; field of next frame
+  mov r11, 0          ; current y
   .l:
     cmp byte[r8], 1   ; print symbol
     jne .dead
@@ -52,7 +54,6 @@ update_field:
     call print
 
     call get_neighbors; get num of neighbors (not implemented yet)
-    mov rax, 3        ; set num of neighbors to 3 (temporary)
     cmp rax, 2
     jl .die
     cmp rax, 3
@@ -70,20 +71,21 @@ update_field:
     inc r9
     inc r10
     cmp r9, width
-    jne .nl
+    jne .nnl
 
     mov r9, 0
     mov rsi, newline
     call print
+    add r11, 1
 
-    .nl:
+    .nnl:
     cmp r8, current + (width*height)
     jne .l
 
   cmp byte[state], 0
   je .s0
 
-  .s1:
+  .s1:        ; switch current and next field
     mov qword[next], field2
     mov qword[current], field1
     mov byte[state], 0
@@ -126,5 +128,44 @@ print:
 
 
 get_neighbors:
-  nop
+  xor rax, rax
+  push rbx
+  mov rbx, r8
+
+  cmp r9, 0
+  je .noleftneighbor
+  sub r8, 1
+  cmp byte[r8], 0
+  je .noleftneighbor
+  add rax, 1
+  .noleftneighbor:
+
+  cmp r9, width - 1
+  je .norightneighbor
+  mov r8, rbx
+  add r8, 1
+  cmp byte[r8], 0
+  je .norightneighbor
+  add rax, 1
+  .norightneighbor:
+
+  cmp r11, height-1
+  je .nobottomneighbor
+  mov r8, rbx
+  add r8, width
+  cmp byte[r8], 0
+  je .nobottomneighbor
+  add rax, 1
+  .nobottomneighbor:
+
+  cmp r11, 0
+  je .notopneighbor
+  mov r8, rbx
+  sub r8, width
+  cmp byte[r8], 0
+  je .notopneighbor
+  add rax, 1
+  .notopneighbor:
+
+  pop rbx
   ret
