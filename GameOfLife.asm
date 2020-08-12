@@ -11,15 +11,21 @@ section .rodata
   msg db "Hello World", 10, 0
 
 section .data
-  field times width*height db 0
+  field1 times width*height db 0
+  field2 times width*height db 0
+  current dq field1
+  next dq field2
+  state db 0
 
 section .text
   global _start
 
 
 _start:
-  call draw_field
-
+  call update_field
+  call update_field
+  call update_field
+  call update_field
 
 exit:  ; exit with code 0
   mov rax, 60
@@ -31,10 +37,12 @@ update_field:
   push rax
   push r8
   push r9
-  mov r8, field
+  push r10
+  mov r8, [current]   ; current field
   mov r9, 0
+  mov r10, [next]     ; field of next frame
   .l:
-    cmp byte[r8], 1
+    cmp byte[r8], 1   ; print symbol
     jne .dead
     mov rsi, alivecell
     jmp .out
@@ -43,19 +51,24 @@ update_field:
     .out:
     call print
 
-    call get_neighbors
+    call get_neighbors; get num of neighbors (not implemented yet)
+    mov rax, 3        ; set num of neighbors to 3 (temporary)
     cmp rax, 2
     jl .die
     cmp rax, 3
     jg .die
 
+    mov byte[r10], 1
+
     jmp .e
     .die:
+    mov byte[r10], 0
 
     .e:
 
     inc r8
     inc r9
+    inc r10
     cmp r9, width
     jne .nl
 
@@ -64,9 +77,26 @@ update_field:
     call print
 
     .nl:
-    cmp r8, field + (width*height)
+    cmp r8, current + (width*height)
     jne .l
 
+  cmp byte[state], 0
+  je .s0
+
+  .s1:
+    mov qword[next], field2
+    mov qword[current], field1
+    mov byte[state], 0
+    jmp .se
+
+  .s0:
+    mov qword[next], field1
+    mov qword[current], field2
+    mov byte[state], 1
+
+  .se:
+
+  pop r10
   pop r9
   pop r8
   pop rax
