@@ -30,6 +30,9 @@ _start:
   mov rsi, msg
   call print
   call update_field
+  mov rsi, msg
+  call print
+  call update_field
 
 exit:  ; exit with code 0
   mov rax, 60
@@ -37,6 +40,7 @@ exit:  ; exit with code 0
   syscall
 
 
+; updates to the next generation and prints the field
 update_field:
   push r8
   push r10
@@ -46,10 +50,12 @@ update_field:
 
   mov r8, [current]   ; current field
   mov r10, [next]     ; field of next frame
+
+  ; loop through each cell
   .l:
-    cmp byte[r8], 1   ; print symbol
+    cmp byte[r8], 1   ; check if cell is alive
     jne .dead
-  
+    ; and print the corresponding symbol
     mov rsi, alivecell
     jmp .out
     .dead:
@@ -58,38 +64,53 @@ update_field:
     call print
 
     call get_neighbors; get num of neighbors (not implemented yet)
+    ; update to the next generation, write to [[next]]
     cmp rax, 2
     jl .die
     cmp rax, 3
+    je .born
     jg .die
 
-    mov byte[r10], 1
-
+    .live:
+    push rax
+    mov al, byte[r8]
+    mov byte[r10], al
+    pop rax
     jmp .e
+
+    .born:
+    mov byte[r10], 1
+    jmp .e
+
     .die:
     mov byte[r10], 0
 
     .e:
 
+    ; increace cell counter for current and next generation
     inc r8
+    inc r10
     inc word[currentx]
 
+    ; check for end of line
     cmp word[currentx], width
     jne .nnl
 
-    mov word[currentx], 0
-    mov rsi, newline
+    mov word[currentx], 0 ; reset x-pos
+    mov rsi, newline      ; print newline
     call print
     add word[currenty], 1
 
     .nnl:
-    cmp word[currenty], height
-    jne .l
+    cmp word[currenty], height  ; check for end of field
+    jne .l                      ; if end of field: goto .l
+
+  ; else:
 
   cmp byte[state], 0
   je .s0
 
-  .s1:        ; switch current and next field
+  .s1:        ; switch current and next field depending on current state
     mov qword[next], field2
     mov qword[current], field1
     mov byte[state], 0
@@ -129,44 +150,14 @@ print:
     ret
 
 
+; get number of neighbors for current cell. n -> rax
 get_neighbors:
   xor rax, rax
   push rbx
   mov rbx, r8
 
-  cmp word[currentx], 0
-  je .noleftneighbor
-  sub r8, 1
-  cmp byte[r8], 0
-  je .noleftneighbor
-  inc rax
-  .noleftneighbor:
 
-  cmp word[currentx], width - 1
-  je .norightneighbor
-  mov r8, rbx
-  add r8, 1
-  cmp byte[r8], 0
-  je .norightneighbor
-  inc rax
-  .norightneighbor:
 
-  cmp word[currenty], 0
-  je .notopneighbor
-  mov r8, rbx
-  sub r8, width
-  cmp byte[r8], 0
-  je .notopneighbor
-  inc rax
-  .notopneighbor:
-
-  cmp word[currenty], height - 1
-  je .nobottomneighbor
-  mov r8, rbx
-  add r8, width
-  cmp byte[r8], 0
-  je .nobottomneighbor
-  .nobottomneighbor:
 
   pop rbx
   ret
