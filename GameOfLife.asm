@@ -11,14 +11,15 @@ section .rodata
   msg db "Hello World", 10, 0
 
 section .data
-  times width db 0
   field1 times width*height db 0
-  times width db 0
   field2 times width*height db 0
-  times width db 0
+
   current dq field1
   next dq field2
   state db 0
+
+  currentx dw 0
+  currenty dw 0
 
 section .text
   global _start
@@ -26,6 +27,8 @@ section .text
 
 _start:
   call update_field
+  mov rsi, msg
+  call print
   call update_field
 
 exit:  ; exit with code 0
@@ -35,17 +38,18 @@ exit:  ; exit with code 0
 
 
 update_field:
-  push rax
   push r8
-  push r9
   push r10
+
+  mov word[currentx], 0
+  mov word[currenty], 0
+
   mov r8, [current]   ; current field
-  mov r9, 0           ; current x
   mov r10, [next]     ; field of next frame
-  mov r11, 0          ; current y
   .l:
     cmp byte[r8], 1   ; print symbol
     jne .dead
+  
     mov rsi, alivecell
     jmp .out
     .dead:
@@ -68,18 +72,18 @@ update_field:
     .e:
 
     inc r8
-    inc r9
-    inc r10
-    cmp r9, width
+    inc word[currentx]
+
+    cmp word[currentx], width
     jne .nnl
 
-    mov r9, 0
+    mov word[currentx], 0
     mov rsi, newline
     call print
-    add r11, 1
+    add word[currenty], 1
 
     .nnl:
-    cmp r8, current + (width*height)
+    cmp word[currenty], height
     jne .l
 
   cmp byte[state], 0
@@ -99,9 +103,7 @@ update_field:
   .se:
 
   pop r10
-  pop r9
   pop r8
-  pop rax
   ret
 
 print:
@@ -132,40 +134,39 @@ get_neighbors:
   push rbx
   mov rbx, r8
 
-  cmp r9, 0
+  cmp word[currentx], 0
   je .noleftneighbor
   sub r8, 1
   cmp byte[r8], 0
   je .noleftneighbor
-  add rax, 1
+  inc rax
   .noleftneighbor:
 
-  cmp r9, width - 1
+  cmp word[currentx], width - 1
   je .norightneighbor
   mov r8, rbx
   add r8, 1
   cmp byte[r8], 0
   je .norightneighbor
-  add rax, 1
+  inc rax
   .norightneighbor:
 
-  cmp r11, height-1
-  je .nobottomneighbor
-  mov r8, rbx
-  add r8, width
-  cmp byte[r8], 0
-  je .nobottomneighbor
-  add rax, 1
-  .nobottomneighbor:
-
-  cmp r11, 0
+  cmp word[currenty], 0
   je .notopneighbor
   mov r8, rbx
   sub r8, width
   cmp byte[r8], 0
   je .notopneighbor
-  add rax, 1
+  inc rax
   .notopneighbor:
+
+  cmp word[currenty], height - 1
+  je .nobottomneighbor
+  mov r8, rbx
+  add r8, width
+  cmp byte[r8], 0
+  je .nobottomneighbor
+  .nobottomneighbor:
 
   pop rbx
   ret
