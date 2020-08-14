@@ -1,11 +1,12 @@
-width    equ 20
-height   equ 20
+width    equ 50
+height   equ 50
 
 poll_len equ 3
 
+
 section .rodata
-  deadcell  db "d ", 0
-  alivecell db "a ", 0
+  deadcell  db "  ", 0
+  alivecell db " *", 0
   cursorcolor db 27, "[42m", 0
   resetcolor db 27, "[0m", 0
 
@@ -19,6 +20,20 @@ section .rodata
   down	      db 27, '[B', 0
   left	      db 27, '[C', 0
   right	      db 27, '[D', 0
+
+  endofline   db 27, '[0m', '║', 10, 0
+  startofline db '║', 0
+  top				db '╔'
+						times (width-5) db '═'
+					  db 27, '[32m', 'GameOfLife', 27, '[0m'
+						times (width-5) db '═'
+    	      db '╗', 10, 0
+  
+  bottom    db '╚'
+    	      times (width*2) db '═'
+    	      db '╝', 0
+
+
 
 
 section .data
@@ -145,6 +160,11 @@ update_field:
   push r10
   push r12
 
+  mov rsi, top
+  call print
+  mov rsi, startofline
+  call print
+
   mov word[currentx], 0
   mov word[currenty], 0
 
@@ -217,9 +237,15 @@ update_field:
     jne .nnl
 
     mov word[currentx], 0 ; reset x-pos
-    mov rsi, newline      ; print newline
+    mov rsi, endofline    ; printnewline
     call print
     add word[currenty], 1
+
+    cmp word[currenty], height
+    je .nnl
+
+    mov rsi, startofline
+    call print
 
     .nnl:
     cmp word[currenty], height  ; check for end of field
@@ -244,7 +270,8 @@ update_field:
     mov byte[state], 1
 
   .se:
-
+  mov rsi, bottom
+  call print
   pop r12
   pop r10
   pop r8
@@ -279,8 +306,86 @@ get_neighbors:
   push rbx
   mov rbx, r8
 
+  cmp word[currentx], 0
+  je .noleft
+  sub r8, 1
+  cmp byte[r8], 0
+  je .noleft
+  inc rax
+  .noleft:
 
+  cmp word[currentx], width - 1
+  je .noright
+  mov r8, rbx
+  add r8, 1
+  cmp byte[r8], 0
+  je .noright
+  inc rax
+  .noright:
 
+  cmp word[currenty], 0
+  je .notop
+  mov r8, rbx
+  sub r8, width
+  cmp byte[r8], 0
+  je .notop
+  inc rax
+  .notop:
+
+  cmp word[currenty], height - 1
+  je .nobottom
+  mov r8, rbx
+  add r8, width
+  cmp byte[r8], 0
+  je .nobottom
+  inc rax
+  .nobottom:
+
+  cmp word[currentx], 0
+  je .notopleft
+  cmp word[currenty], 0
+  je .notopleft
+  mov r8, rbx
+  sub r8, width + 1
+  cmp byte[r8], 0
+  je .notopleft
+  inc rax
+  .notopleft:
+
+  cmp word[currentx], width - 1
+  je .notopright
+  cmp word[currenty], 0
+  je .notopright
+  mov r8, rbx
+  sub r8, width - 1
+  cmp byte[r8], 0
+  je .notopright
+  inc rax
+  .notopright:
+
+  cmp word[currentx], 0
+  je .nobottomleft
+  cmp word[currenty], height - 1
+  je .nobottomleft
+  mov r8, rbx
+  add r8, width - 1
+  cmp byte[r8], 0
+  je .nobottomleft
+  inc rax
+  .nobottomleft:
+
+  cmp word[currentx], width - 1
+  je .nobottomright
+  cmp word[currenty], height - 1
+  je .nobottomright
+  mov r8, rbx
+  add r8, width + 1
+  cmp byte[r8], 0
+  je .nobottomright
+  inc rax
+  .nobottomright:
+
+  mov r8, rbx
   pop rbx
   ret
 
