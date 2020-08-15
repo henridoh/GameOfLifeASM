@@ -13,6 +13,7 @@ section .rodata
   newline db 10, 0
 
   clearscreen db 27, "[2J", 27, "[0;0H" , 0
+    .l equ $-clearscreen
 
   msg db "Hello World", 10, 0
 
@@ -22,16 +23,20 @@ section .rodata
   right	      db 27, '[D', 0
 
   endofline   db 27, '[0m', '║', 10, 0
+    .l equ $-endofline
   startofline db '║', 0
+    .l equ $-startofline
   top				db '╔'
 						times (width-5) db '═'
 					  db 27, '[32m', 'GameOfLife', 27, '[0m'
 						times (width-5) db '═'
     	      db '╗', 10, 0
+    .l equ $-top
   
   bottom    db '╚'
     	      times (width*2) db '═'
     	      db '╝', 0
+    .l equ $-bottom
 
 
 
@@ -61,8 +66,13 @@ section .data
     .s dq 0
     .ns dq 125000000
 
+  measuretime:
+    .s dq 0
+    .ns dq 0
+
 section .bss
-  buffer    resb 128
+  buffer    resb 3
+
   stty	  resb 12
   slflag  resb 4
   srest	  resb 44
@@ -78,14 +88,25 @@ section .text
 _start:
   call setnoncan
 
+  mov rax, 201
+  mov rdi, measuretime
+  syscall
+  mov r8, qword[measuretime.ns]
+  syscall
+  sub r8, qword[measuretime.ns]
+  sub qword[sleeptime.ns], r8
+
 gameloop:
+  .input:
   call poll  ; get input
+  cmp al, 0
+  je .inputend
 
   cmp al, 'q'  ; if q is pressed exit
   je exit
 
   cmp al, ' '  ; if space is pressed change 
-  jne .noinput ;state of cell on curren cursor pos
+  jne .nospace ;state of cell on curren cursor pos
 
   xor rax, rax
   mov ax, word[cursory]
@@ -94,8 +115,7 @@ gameloop:
   add ax, word[cursorx]
   add rax, qword[current]
   xor byte[rax], 1
-
-  .noinput:
+  .nospace:
 
   cmp al, 27   ; if ansi escape sequence is detected
   jne .nocursorevent
@@ -135,6 +155,9 @@ gameloop:
     add word[cursory], 1
 
   .end:
+  jmp .input
+  .inputend:
+
   .nocursorevent:
   cmp al, 's'   ; if s is pressed
   jne .nopause  ; pause/unpause generations
@@ -298,7 +321,6 @@ print:
     pop rdi
     pop rax
     ret
-
 
 ; get number of neighbors for current cell. n -> rax
 get_neighbors:
@@ -513,5 +535,4 @@ sleep:			  ; sleep $sleeptime
 	mov rdx, 0
   syscall
   ret
-
 
